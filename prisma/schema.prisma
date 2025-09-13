@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ExamType {
+  ujian_utama
+  ujian_ulangan
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // "admin", "penguji"
+  permissions String   // JSON array of permissions
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  roleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  role      Role        @relation(fields: [roleId], references: [id])
+  examiner  Examiner?
+  student   Student?
+}
+
+model Examiner {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  nama      String
+  nipdn     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rooms  ExamRoom[]
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  nim       String   @unique
+  nama      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Rubric {
+  id        String   @id @default(cuid())
+  nama      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questions RubricQuestion[]
+  rooms     ExamRoom[]
+}
+
+model RubricQuestion {
+  id          String   @id @default(cuid())
+  rubricId    String
+  pertanyaan  String
+  rangeMin    Int
+  rangeMax    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rubric Rubric @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+}
+
+model Exam {
+  id              String    @id @default(cuid())
+  nama            String
+  tanggal         DateTime
+  tipe            ExamType
+  jumlahRuangan   Int
+  jumlahKategori  Int
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  rooms ExamRoom[]
+}
+
+model ExamRoom {
+  id        String   @id @default(cuid())
+  examId    String
+  kode      String   // e.g., "A1", "A2", "B1", "B2"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exam      Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  rubric    Rubric?    @relation(fields: [rubricId], references: [id])
+  rubricId  String?
+  examiners Examiner[]
+
+  @@unique([examId, kode])
+}
